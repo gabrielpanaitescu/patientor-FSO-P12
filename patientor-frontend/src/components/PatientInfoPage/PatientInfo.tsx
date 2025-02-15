@@ -44,63 +44,72 @@ export const PatientInfo = ({ diagnoses, setTriggerRefetch }: Props) => {
 
   const diagnosesByCode: DiagnosesByCode = {};
 
-  useEffect(() => {
-    const fetchPatient = async () => {
-      try {
-        if (!id) throw new Error("Missing id");
-        const patient = await patientService.getPatient(id);
-        setPatient(patient);
-      } catch (error: unknown) {
-        if (axios.isAxiosError(error)) {
-          if (
-            error?.response?.data &&
-            typeof error.response.data === "string"
-          ) {
-            console.log("Axios error: ", error);
-          } else {
-            console.log("Unrecognized axios error", error);
-          }
+  const fetchPatient = async () => {
+    try {
+      if (!id) throw new Error("Missing id");
+      const patient = await patientService.getPatient(id);
+      setPatient(patient);
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        if (error?.response?.data && typeof error.response.data === "string") {
+          console.log("Axios error: ", error);
         } else {
-          console.log("Unknown error: ", error);
+          console.log("Unrecognized axios error", error);
         }
+      } else {
+        console.log("Unknown error: ", error);
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     void fetchPatient();
+    //eslint-disable-next-line
   }, [id]);
 
   if (!patient) return;
 
   const addNewEntry = async (values: EntryFormValues) => {
     try {
-      const newEntry = await patientService.addEntry(values, patient.id);
-      setPatient({
-        ...patient,
-        entries: patient.entries.concat(newEntry),
-      });
+      // optimistic UI version, can replace fetchPatient() for smoother UX
+      // const newEntry = await patientService.addEntry(values, patient.id);
+      // setPatient({
+      //   ...patient,
+      //   entries: patient.entries.concat(newEntry),
+      // });
+      await patientService.addEntry(values, patient.id);
       setError("");
       setFormOpen(false);
       setSuccess(`Entry successfully added`);
       setTriggerRefetch(true);
+      fetchPatient();
       setTimeout(() => {
         setSuccess("");
       }, 3000);
     } catch (error: unknown) {
+      console.log("error", error);
       if (axios.isAxiosError(error)) {
         if (!error.response) {
           console.log("Unrecognized axios error", error);
           setError("Unrecognized axios error");
-        } else if (typeof error.response.data === "object") {
-          const message = error.response.data.error
-            .map(
-              (error: { path: string[]; message: string }) =>
-                `Error on field '${error.path[0]}': ${error.message}`
-            )
-            .join("\n");
-          setError(message);
-          console.log(error);
+        } else if (
+          typeof error.response.data === "object" &&
+          error.response.data.error
+        ) {
+          const errorResponse = error.response.data.error;
+          let message;
+          if (typeof errorResponse === "object" && errorResponse.length > 0) {
+            message = errorResponse
+              .map(
+                (error: { path: string[]; message: string }) =>
+                  `Error on field '${error.path[0]}': ${error.message}`
+              )
+              .join("\n");
+            setError(message);
+          } else if (typeof errorResponse === "string") {
+            setError(errorResponse);
+          }
         } else if (typeof error.response.data === "string") {
-          console.log(error);
           setError(error.response.data);
         }
       } else {

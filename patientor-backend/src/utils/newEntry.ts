@@ -37,7 +37,5 @@ export const OccupationalHealthcareEntrySchema = z.object({
 
 export const HospitalEntrySchema = z.object({
   type: z.literal("Hospital"),
-  discharge: z
-    .object({ date: z.string().date(), criteria: z.string() })
-    .optional(),
+  discharge: z.object({ date: z.string().date(), criteria: z.string() }),
 });

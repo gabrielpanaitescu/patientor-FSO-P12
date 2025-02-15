@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PatientDataSchema } from "./utils/newPatient";
+import { Types } from "mongoose";
 
 export interface Diagnosis {
   code: string;
@@ -8,7 +9,7 @@ export interface Diagnosis {
 }
 
 export interface BaseEntry {
-  id: string;
+  _id: Types.ObjectId;
   date: string;
   specialist: string;
   description: string;
@@ -66,13 +67,13 @@ export enum Gender {
 }
 
 export interface Patient {
-  id: string;
+  _id: Types.ObjectId;
   name: string;
   dateOfBirth: string;
   ssn: string;
   gender: Gender;
   occupation: string;
-  entries: Entry[];
+  entries: Types.ObjectId[];
 }
 
 export type RestrictedPatientData = Omit<Patient, "ssn">;

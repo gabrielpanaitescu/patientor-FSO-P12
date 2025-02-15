@@ -1,4 +1,9 @@
-import patientsData from "../../data/patients";
+import PatientModel from "../../mongo/models/patient";
+import {
+  HealthCheckModel,
+  OccupationalHealthcareModel,
+  HospitalModel,
+} from "../../mongo/models/entry";
 import {
   Entry,
   IdlessEntry,
@@ -6,48 +11,61 @@ import {
   Patient,
   RestrictedPatientData,
 } from "../types";
-import { v1 as uuid } from "uuid";
+import { HydratedDocument } from "mongoose";
 
-const getRestrictedPatientsData = (): RestrictedPatientData[] => {
-  return patientsData.map(
-    ({ id, name, dateOfBirth, gender, occupation, entries }) => ({
-      id,
-      name,
-      dateOfBirth,
-      gender,
-      occupation,
-      entries,
-    })
-  );
+const getRestrictedPatientsData = async (): Promise<
+  RestrictedPatientData[]
+> => {
+  const patientsData = await PatientModel.find()
+    .select("-ssn")
+    .populate("entries");
+
+  console.log("patientsData", patientsData);
+
+  return patientsData;
 };
 
-const addPatient = (patient: ParsedPatientData): Patient => {
-  const newPatient = {
+const addPatient = async (patient: ParsedPatientData): Promise<Patient> => {
+  const newPatient = new PatientModel({
     ...patient,
-    id: uuid(),
     entries: [],
-  };
+  });
 
-  patientsData.push(newPatient);
+  await newPatient.save();
 
   return newPatient;
 };
 
-const getPatient = (id: string): Patient | undefined => {
-  const foundPatient = patientsData.find((patient) => patient.id === id);
+const getPatient = async (id: string): Promise<Patient | null> => {
+  const foundPatient = await PatientModel.findById(id)
+    .populate("entries")
+    .exec();
 
   return foundPatient;
 };
 
-const addEntryToPatient = (id: string, entry: IdlessEntry): Entry => {
-  const newEntry: Entry = {
-    ...entry,
-    id: uuid(),
-  };
+const addEntryToPatient = async (
+  id: string,
+  entry: IdlessEntry
+): Promise<Entry> => {
+  let newEntry: HydratedDocument<IdlessEntry>;
 
-  const patient = patientsData.find((p) => p.id === id);
+  if (entry.type === "HealthCheck") {
+    newEntry = new HealthCheckModel(entry);
+  } else if (entry.type === "OccupationalHealthcare") {
+    newEntry = new OccupationalHealthcareModel(entry);
+  } else if (entry.type === "Hospital") {
+    newEntry = new HospitalModel(entry);
+  } else {
+    throw new Error("Entry type unresolved");
+  }
+
+  await newEntry.save();
+
+  const patient = await PatientModel.findById(id);
   if (!patient) throw new Error("Patient with the specified id not found");
-  patient.entries = patient.entries.concat(newEntry);
+  patient.entries = patient.entries.concat(newEntry._id);
+  await patient.save();
 
   return newEntry;
 };

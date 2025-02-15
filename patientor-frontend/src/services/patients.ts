@@ -24,8 +24,6 @@ const create = async (object: PatientFormValues) => {
 };
 
 const addEntry = async (object: EntryFormValues, id: string) => {
-  console.log("object", object);
-
   const { data } = await axios.post<Entry>(`${url}/${id}/entries`, object);
 
   return data;

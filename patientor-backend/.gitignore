@@ -1,3 +1,6 @@
+redis_data_dev
+redis_data
+
 node_modules
 build
 .env

@@ -16,6 +16,7 @@ import {
   HospitalEntrySchema,
   OccupationalHealthcareEntrySchema,
 } from "../utils/newEntry";
+import getRedisClient from "../../redis";
 
 export const patientsRouter = express.Router();
 
@@ -83,16 +84,21 @@ const errorMiddleware = (
   }
 };
 
-patientsRouter.get("/", (_req, res: Response<RestrictedPatientData[]>) => {
-  res.send(patientService.getRestrictedPatientsData());
-});
+patientsRouter.get(
+  "/",
+  async (_req, res: Response<RestrictedPatientData[]>) => {
+    const patients = await patientService.getRestrictedPatientsData();
+
+    res.status(200).json(patients);
+  }
+);
 
 patientsRouter.get(
   "/:id",
-  (req: Request, res: Response<Patient | { error: string }>) => {
+  async (req: Request, res: Response<Patient | { error: string }>) => {
     const id = req.params.id;
 
-    const patient = patientService.getPatient(id);
+    const patient = await patientService.getPatient(id);
 
     if (!patient) {
       res.status(404).send({ error: "patient id not found" });
@@ -105,34 +111,36 @@ patientsRouter.get(
 patientsRouter.post(
   "/",
   parsePatientMiddleware,
-  (
+  async (
     req: Request<unknown, unknown, ParsedPatientData>,
     res: Response<Patient>
   ) => {
-    const addedPatient = patientService.addPatient(req.body);
+    const redisClient = await getRedisClient();
+    const addedPatientsCount = await redisClient.get("addedPatients");
+    if (addedPatientsCount === null || addedPatientsCount === undefined) {
+      await redisClient.set("addedPatients", 1);
+    } else {
+      if (typeof addedPatientsCount === "string")
+        await redisClient.set("addedPatients", Number(addedPatientsCount) + 1);
+    }
 
-    res.json(addedPatient);
+    const addedPatient = await patientService.addPatient(req.body);
+    res.status(201).json(addedPatient);
   }
 );
 
 patientsRouter.post(
   "/:id/entries",
   parseEntryMiddleware,
-  (
+  async (
     req: Request<{ id: string }, unknown, IdlessEntry>,
     res: Response<Entry>
   ) => {
     const id = req.params.id;
 
-    // extra step (parsing) due to FSO 9.27 specific requirements; will always add a diagnosisCodes field, as an [] if its missing
-    // const entryWithParsedDiagnosisCodes = {
-    //   ...req.body,
-    //   diagnosisCodes: parseDiagnosisCodesOf(req.body),
-    // };
+    const addedEntry = await patientService.addEntryToPatient(id, req.body);
 
-    const addedEntry = patientService.addEntryToPatient(id, req.body);
-
-    res.json(addedEntry);
+    res.status(201).json(addedEntry);
   }
 );
 
