@@ -20,8 +20,6 @@ const getRestrictedPatientsData = async (): Promise<
     .select("-ssn")
     .populate("entries");
 
-  console.log("patientsData", patientsData);
-
   return patientsData;
 };
 

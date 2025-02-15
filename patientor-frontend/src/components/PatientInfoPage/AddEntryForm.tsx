@@ -144,7 +144,10 @@ export const AddEntryForm = ({
         .filter((v) => typeof v === "number")
         .find((v) => v === value);
 
-      if (healthCheckRatingValue !== undefined) {
+      if (
+        healthCheckRatingValue !== undefined &&
+        typeof healthCheckRatingValue !== "string"
+      ) {
         setHealthCheckRating(healthCheckRatingValue);
       }
     }

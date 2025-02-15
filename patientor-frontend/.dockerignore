@@ -3,6 +3,7 @@ dev.Dockerfile
 .dockerignore
 node_modules
 .gitignore
+dist
 
 
 

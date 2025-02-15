@@ -1,0 +1,46 @@
+services:
+  mongo:
+    image: mongo
+    container_name: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: the_database
+    volumes:
+      - ./patientor-backend/mongo/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
+      - mongo_data:/data/db
+  redis:
+    image: redis
+    container_name: redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ./patientor-backend/redis-data:/data
+  backend:
+    image: patientor-backend
+    container_name: patientor-backend
+    build:
+      context: ./patientor-backend
+      dockerfile: Dockerfile
+    environment:
+      - MONGO_URL=mongodb://the_username:the_password@mongo:27017/the_database
+      - REDIS_URL=redis://redis:6379
+  frontend:
+    image: patientor-frontend
+    container_name: patientor-frontend
+    build:
+      context: ./patientor-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_BACKEND_URL: http://localhost:8081/api
+  reverse-proxy:
+    image: nginx:1.20.1
+    container_name: reverse-proxy
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - 8081:81
+    depends_on:
+      - frontend
+      - backend
+volumes:
+  mongo_data:

@@ -94,14 +94,14 @@ const PatientListPage = ({ patients, setPatients }: Props) => {
                   return null;
                 }
               })
-              .filter((v) => v !== null);
+              .filter((v) => v !== null) as number[];
 
             const healthCheckAverage: number | null =
               patientHealthCheckRatingData.length < 1
                 ? null
-                : patientHealthCheckRatingData.reduce(
-                    (accum, currValue) => accum + currValue
-                  ) / patientHealthCheckRatingData.length;
+                : patientHealthCheckRatingData.reduce((accum, currValue) => {
+                    return accum + currValue;
+                  }) / patientHealthCheckRatingData.length;
 
             return (
               <TableRow key={patient.id}>
